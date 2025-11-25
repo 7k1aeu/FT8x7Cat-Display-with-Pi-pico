@@ -19,9 +19,9 @@ FT8x7 CAT Display - A hardware project to display information from Yaesu FT-817/
 | Component | Description | Link Example |
 |-----------|-------------|--------------|
 | CPU | Raspberry Pi Pico | [Raspberry Pi Pico](https://www.raspberrypi.com/products/raspberry-pi-pico/) |
-| Display | 1.3" 240x240 LCD with ST7789 controller | [AliExpress LCD](https://ja.aliexpress.com/item/1005008766561044.html) |
-| Cable | CAT cable for FT8x7 radio | 3.5mm TRS to GPIO wiring |
-| Power | USB power supply or radio power | 5V USB or 3.3V regulated |
+| Display | 2.0" 320x240 LCD with ST7789 controller | [AliExpress LCD](https://ja.aliexpress.com/item/1005008766561044.html) |
+| Cable | CAT cable for FT8x7 radio | Mini-DIN 6-pin to GPIO wiring |
+| DC-DC Converter | 13.8V to 5V step-down regulator | MP1584, LM2596, or similar buck converter |
 
 ### Pin Connections
 
@@ -71,6 +71,61 @@ Reference: [FT-817 Pin Configuration](http://hse.dyndns.org/hiroto/RFY_LAB/ft817
 | 4 | DATA OUT | CAT TXD - Serial data output from radio (TTL level) |
 | 5 | SQL | Squelch output (open collector) |
 | 6 | +13.8V | DC power output (max 200mA) |
+
+### 🔌 Power Supply from ACC Connector
+
+The display system is powered directly from the radio's ACC connector +13.8V line (Pin 6), eliminating the need for a separate power source.
+
+**Power Circuit:**
+
+```
+FT-817 ACC Pin 6 (+13.8V)
+        │
+        │  max 200mA
+        ▼
+┌───────────────────┐
+│   DC-DC Buck      │
+│   Converter       │
+│   (13.8V → 5V)    │
+│                   │
+│  Recommended:     │
+│  - MP1584EN       │
+│  - LM2596         │
+│  - AMS1117-5.0    │
+└───────┬───────────┘
+        │
+        ▼ +5V
+┌───────────────────┐
+│  Raspberry Pi     │
+│  Pico VSYS        │
+│  (Pin 39)         │
+└───────────────────┘
+```
+
+**Wiring for Power:**
+
+| Source | Destination | Description |
+|--------|-------------|-------------|
+| ACC Pin 6 (+13.8V) | DC-DC IN+ | Power input from radio |
+| ACC Pin 2 (GND) | DC-DC IN- | Ground |
+| DC-DC OUT+ (5V) | Pico VSYS (Pin 39) | Regulated 5V to Pico |
+| DC-DC OUT- (GND) | Pico GND (Pin 38) | Ground |
+
+**Notes:**
+- The ACC connector can supply up to **200mA** at 13.8V
+- Raspberry Pi Pico typically consumes ~20-50mA, LCD ~20-40mA
+- Total consumption is well within the 200mA limit
+- Use a DC-DC converter with at least 85% efficiency
+- Add a small capacitor (100µF) on the output for stability
+- The Pico's onboard regulator converts 5V VSYS to 3.3V for GPIO
+
+**Recommended DC-DC Converters:**
+
+| Model | Input Range | Output | Features |
+|-------|-------------|--------|----------|
+| MP1584EN | 4.5-28V | 0.8-20V adj | Small, 3A, high efficiency |
+| LM2596 | 4-40V | 1.25-35V adj | Common, easy to use |
+| AMS1117-5.0 | 6.5-12V | 5V fixed | Linear (less efficient but simple) |
 
 ### ⚠️ Voltage Level Considerations
 
@@ -125,28 +180,50 @@ Reference: [FT-817 Pin Configuration](http://hse.dyndns.org/hiroto/RFY_LAB/ft817
 ### Wiring Diagram
 
 ```
-Raspberry Pi Pico                    ST7789 LCD
-┌─────────────────┐                  ┌─────────┐
-│            3V3  ├──────────────────┤ VCC     │
-│            GND  ├──────────────────┤ GND     │
-│           GP18  ├──────────────────┤ SCL     │
-│           GP19  ├──────────────────┤ SDA     │
-│           GP16  ├──────────────────┤ DC      │
-│           GP17  ├──────────────────┤ RST     │
-│           GP20  ├──────────────────┤ CS      │
-│           GP21  ├──────────────────┤ BL      │
-│                 │                  └─────────┘
-│            GP0  ├─────┐
-│            GP1  ├────┐│            FT8x7 Radio
-│            GND  ├───┐││            ┌─────────┐
-└─────────────────┘   │││            │ DATA    │
-                      │││            │ ┌─────┐ │
-                      ││└────────────┤►│ RXD │ │
-                      │└─────────────┤◄│ TXD │ │
-                      └──────────────┤ │ GND │ │
-                                     │ └─────┘ │
-                                     └─────────┘
+                                         ST7789 LCD (320x240)
+                                         ┌─────────┐
+Raspberry Pi Pico                        │ VCC     ├◄── 3.3V
+┌─────────────────┐                      │ GND     ├◄── GND
+│           VSYS  ├◄── 5V ◄──┐           │ SCL     │
+│            3V3  ├──────────┼───────────┤ SDA     │
+│            GND  ├──────────┼───────────┤ DC      │
+│           GP18  ├──────────┼───────────┤ RST     │
+│           GP19  ├──────────┼───────────┤ CS      │
+│           GP16  ├──────────┼───────────┤ BL      │
+│           GP17  ├──────────┼───────────┴─────────┘
+│           GP20  ├──────────┤
+│           GP21  ├──────────┤           FT-817/818 ACC
+│                 │          │           (Mini-DIN 6-pin)
+│            GP0  ├──────────┼───────────┬─ Pin1 (DATA IN)
+│            GP1  ├──────────┼───────────┼─ Pin4 (DATA OUT)
+│            GND  ├──────────┴───────────┼─ Pin2 (GND)
+└─────────────────┘                      │
+        ▲                                │
+        │ 5V                             │
+┌───────┴──────────┐                     │
+│   DC-DC Buck     │◄────────────────────┴─ Pin6 (+13.8V)
+│  (13.8V → 5V)    │
+│   MP1584 etc.    │
+└──────────────────┘
 ```
+
+**Complete Wiring Table:**
+
+| From | To | Notes |
+|------|----|-------|
+| ACC Pin 6 (+13.8V) | DC-DC IN+ | Power source |
+| ACC Pin 2 (GND) | DC-DC IN- / Pico GND | Common ground |
+| DC-DC OUT+ (5V) | Pico VSYS (Pin 39) | Regulated power |
+| ACC Pin 1 (DATA IN) | Pico GP0 | CAT TX (via level shifter recommended) |
+| ACC Pin 4 (DATA OUT) | Pico GP1 | CAT RX (via level shifter recommended) |
+| Pico 3V3 | LCD VCC | LCD power |
+| Pico GND | LCD GND | LCD ground |
+| Pico GP18 | LCD SCL | SPI clock |
+| Pico GP19 | LCD SDA | SPI data |
+| Pico GP16 | LCD DC | Data/Command |
+| Pico GP17 | LCD RST | Reset |
+| Pico GP20 | LCD CS | Chip select |
+| Pico GP21 | LCD BL | Backlight |
 
 ## Software Setup
 

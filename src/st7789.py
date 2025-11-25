@@ -44,7 +44,7 @@ class ST7789:
     MADCTL_BGR = 0x08  # BGR Order
 
     def __init__(self, spi, dc, rst, cs, bl=None,
-                 width=240, height=240, rotation=0):
+                 width=320, height=240, rotation=0):
         """
         Initialize the ST7789 display.
 
@@ -54,8 +54,8 @@ class ST7789:
             rst: Reset pin
             cs: Chip Select pin
             bl: Backlight pin (optional)
-            width: Display width in pixels
-            height: Display height in pixels
+            width: Display width in pixels (default 320)
+            height: Display height in pixels (default 240)
             rotation: Display rotation (0, 90, 180, 270)
         """
         self.spi = spi
@@ -64,6 +64,8 @@ class ST7789:
         self.cs = Pin(cs, Pin.OUT)
         self.bl = Pin(bl, Pin.OUT) if bl is not None else None
 
+        self._init_width = width
+        self._init_height = height
         self.width = width
         self.height = height
         self.rotation = rotation
@@ -138,29 +140,30 @@ class ST7789:
         """
         self.rotation = rotation
 
+        # For 320x240 display
         if rotation == 0:
             madctl = self.MADCTL_MX | self.MADCTL_MY | self.MADCTL_RGB
-            self.width = 240
-            self.height = 240
+            self.width = self._init_width
+            self.height = self._init_height
             self.xoffset = 0
             self.yoffset = 0
         elif rotation == 90:
             madctl = self.MADCTL_MY | self.MADCTL_MV | self.MADCTL_RGB
-            self.width = 240
-            self.height = 240
+            self.width = self._init_height
+            self.height = self._init_width
             self.xoffset = 0
             self.yoffset = 0
         elif rotation == 180:
             madctl = self.MADCTL_RGB
-            self.width = 240
-            self.height = 240
+            self.width = self._init_width
+            self.height = self._init_height
             self.xoffset = 0
-            self.yoffset = 80
+            self.yoffset = 0
         else:  # 270
             madctl = self.MADCTL_MX | self.MADCTL_MV | self.MADCTL_RGB
-            self.width = 240
-            self.height = 240
-            self.xoffset = 80
+            self.width = self._init_height
+            self.height = self._init_width
+            self.xoffset = 0
             self.yoffset = 0
 
         self._write_cmd(self.CMD_MADCTL)

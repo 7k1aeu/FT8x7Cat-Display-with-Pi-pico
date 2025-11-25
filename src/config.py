@@ -1,8 +1,8 @@
 # FT8x7 CAT Display Configuration
 # Configuration settings for the display and serial communication
 
-# Display Configuration (ST7789 1.3" 240x240 LCD)
-DISPLAY_WIDTH = 240
+# Display Configuration (ST7789 2.0" 320x240 LCD)
+DISPLAY_WIDTH = 320
 DISPLAY_HEIGHT = 240
 DISPLAY_ROTATION = 0
 
