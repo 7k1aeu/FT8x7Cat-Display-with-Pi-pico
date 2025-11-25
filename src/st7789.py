@@ -191,7 +191,6 @@ class ST7789:
         self._set_window(0, 0, self.width - 1, self.height - 1)
 
         # Create a buffer for one line
-        line_bytes = self.width * 2
         buf = struct.pack(">H", color) * self.width
 
         for _ in range(self.height):

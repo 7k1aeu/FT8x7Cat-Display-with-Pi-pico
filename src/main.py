@@ -92,20 +92,21 @@ class RadioDisplay:
         self.SMETER_Y = 130
         self.STATUS_Y = 180
         self.FOOTER_Y = 220
+        self.STATUS_HEIGHT = 30
 
     def _draw_text(self, text, x, y, color, scale=1, bg_color=None):
         """Draw text with optional background."""
         if bg_color is not None:
-            # Calculate text width and height
-            text_w = len(text) * 8 * scale
-            text_h = 8 * scale
+            # Calculate text width and height using font dimensions
+            text_w = len(text) * self.font.width * scale
+            text_h = self.font.height * scale
             self.display.fill_rect(x, y, text_w, text_h, bg_color)
 
         self.display.text(self.font, text, x, y, color, scale=scale)
 
     def _draw_centered_text(self, text, y, color, scale=1, bg_color=None):
         """Draw centered text."""
-        text_w = len(text) * 8 * scale
+        text_w = len(text) * self.font.width * scale
         x = (DISPLAY_WIDTH - text_w) // 2
         self._draw_text(text, x, y, color, scale, bg_color)
 
@@ -193,7 +194,8 @@ class RadioDisplay:
     def _draw_status(self):
         """Draw status indicators."""
         # Clear previous status area
-        self.display.fill_rect(0, self.STATUS_Y, DISPLAY_WIDTH, 30, BG_COLOR)
+        self.display.fill_rect(0, self.STATUS_Y, DISPLAY_WIDTH,
+                               self.STATUS_HEIGHT, BG_COLOR)
 
         y = self.STATUS_Y
         x = 10
@@ -314,9 +316,9 @@ class RadioDisplay:
             self._draw_s_meter()
             self.last_s_meter = self.cat.s_meter
 
-        if tx_changed or True:  # Always update status for now
-            self._draw_status()
-            self.last_tx = self.cat.tx_active
+        # Always update status indicators (they include multiple states)
+        self._draw_status()
+        self.last_tx = self.cat.tx_active
 
     def run(self):
         """Main application loop."""

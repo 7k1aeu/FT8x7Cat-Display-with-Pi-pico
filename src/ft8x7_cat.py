@@ -193,17 +193,17 @@ class FT8x7CAT:
         status_byte = response[0]
 
         # Parse status byte
-        self.squelch_open = not bool(status_byte & 0x80)
+        self.squelch_open = not (status_byte & 0x80)
         self.s_meter = status_byte & 0x0F
 
         # Check discriminator center (for FM)
-        disc_center = not bool(status_byte & 0x40)
+        disc_center = not (status_byte & 0x40)
 
         return {
             'squelch_open': self.squelch_open,
             's_meter': self.s_meter,
             'disc_center': disc_center,
-            'ctcss_match': not bool(status_byte & 0x20)
+            'ctcss_match': not (status_byte & 0x20)
         }
 
     def get_tx_status(self):
@@ -221,7 +221,7 @@ class FT8x7CAT:
         status_byte = response[0]
 
         # Parse status byte
-        self.tx_active = not bool(status_byte & 0x80)
+        self.tx_active = not (status_byte & 0x80)
         self.swr_high = bool(status_byte & 0x40)
         self.split_active = bool(status_byte & 0x20)
         self.po_meter = status_byte & 0x0F
