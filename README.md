@@ -46,6 +46,82 @@ FT8x7 CAT Display - A hardware project to display information from Yaesu FT-817/
 | RXD (from radio) | GP1 (Pin 2) | UART RX |
 | GND | GND (Pin 3) | Ground |
 
+### FT-817/FT-818 ACC Connector Pinout
+
+The FT-817/FT-818 uses a **6-pin mini-DIN connector** for the ACC (Accessory) port. The CAT serial interface is accessible via this connector.
+
+Reference: [FT-817 Pin Configuration](http://hse.dyndns.org/hiroto/RFY_LAB/ft817pin/ft817pin.htm)
+
+```
+    FT-817/FT-818 ACC Connector (Mini-DIN 6-pin)
+    (View from radio rear panel)
+
+           ┌───────┐
+          /  5   6  \
+         │  3   4   │
+          \  1   2  /
+           └───────┘
+```
+
+| Pin | Signal | Description |
+|-----|--------|-------------|
+| 1 | DATA IN | CAT RXD - Serial data input to radio (TTL level) |
+| 2 | GND | Ground |
+| 3 | PTT | Push-To-Talk (active low) |
+| 4 | DATA OUT | CAT TXD - Serial data output from radio (TTL level) |
+| 5 | SQL | Squelch output (open collector) |
+| 6 | +13.8V | DC power output (max 200mA) |
+
+### ⚠️ Voltage Level Considerations
+
+**Important**: There is a logic voltage level mismatch between the FT-817/FT-818 and the Raspberry Pi Pico that must be addressed:
+
+| Device | Logic Level | Voltage Range |
+|--------|-------------|---------------|
+| FT-817/FT-818 ACC | 5V TTL | 0V (Low) / 5V (High) |
+| Raspberry Pi Pico | 3.3V CMOS | 0V (Low) / 3.3V (High) |
+
+**Potential Issues:**
+
+1. **Radio → Pico (DATA OUT → GP1)**: The 5V TTL output from the radio could damage the Pico's 3.3V GPIO input. While the Pico's GPIO pins have some 5V tolerance (they can withstand up to ~3.6V safely), the full 5V may exceed specifications and risk damage over time.
+
+2. **Pico → Radio (GP0 → DATA IN)**: The Pico's 3.3V output should be recognized as a logic HIGH by the radio's 5V TTL input, as TTL logic typically recognizes voltages above 2.0V as HIGH. This direction is generally safe.
+
+**Recommended Solutions:**
+
+1. **Level Shifter (Recommended)**: Use a bidirectional logic level converter (e.g., BSS138-based module, TXS0102, or 74LVC245) between the Pico and radio.
+
+   ```
+   Pi Pico                Level Shifter              FT-817
+   ┌──────┐              ┌─────────────┐           ┌──────┐
+   │ 3.3V ├──────────────┤ LV     HV   ├───────────┤ +5V  │
+   │ GP0  ├──────────────┤ LV1    HV1  ├───────────┤ Pin1 │
+   │ GP1  ├──────────────┤ LV2    HV2  ├───────────┤ Pin4 │
+   │ GND  ├──────────────┤ GND    GND  ├───────────┤ Pin2 │
+   └──────┘              └─────────────┘           └──────┘
+   ```
+
+2. **Resistor Voltage Divider (Simple)**: For the 5V → 3.3V direction only, use a resistor divider:
+   - 1kΩ resistor in series with DATA OUT
+   - 2kΩ resistor to ground
+   - Connect the junction to GP1
+   
+   This creates approximately: 5V × (2kΩ / 3kΩ) = 3.3V
+
+   ```
+   FT-817 Pin4 ──[1kΩ]──┬──► Pico GP1
+                        │
+                       [2kΩ]
+                        │
+                       GND
+   ```
+
+3. **Direct Connection (At Your Own Risk)**: Some users report successful direct connection due to:
+   - The Pico's input protection diodes may clamp the voltage
+   - GPIO pins may tolerate brief 5V exposure
+   
+   **Note**: This is not officially supported and may reduce component lifespan or cause damage.
+
 ### Wiring Diagram
 
 ```
@@ -224,6 +300,7 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## References
 
+- [FT-817 Pin Configuration (ACC Connector)](http://hse.dyndns.org/hiroto/RFY_LAB/ft817pin/ft817pin.htm)
 - [FT-817 Operating Manual](https://www.yaesu.com/indexVS.cfm?cmd=DisplayProducts&ProdCatID=102&encProdID=06014CD0AFA0702B25B12AB4DC9C0D27)
 - [Raspberry Pi Pico Documentation](https://www.raspberrypi.com/documentation/microcontrollers/raspberry-pi-pico.html)
 - [MicroPython Documentation](https://docs.micropython.org/en/latest/)
